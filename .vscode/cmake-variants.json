@@ -1,0 +1,23 @@
+{
+    "buildType": {
+        "default": "debug",
+        "choices": {
+            "debug": {
+                "short": "Debug",
+                "buildType": "Debug"
+            }
+        }
+    },
+    "examples": {
+        "default": "x64-linux",
+        "choices": {
+            "x64-linux": {
+                "short": "Linux (x64)",
+                "settings": {
+                    "DIVULGE_EXAMPLES_X64_LINUX": "1",
+                    "G2LABS_PLATFORM_TARGET": "x64"
+                }
+            }
+        }
+    }
+}

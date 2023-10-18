@@ -1,0 +1,7 @@
+{
+    "name": "divulge",
+    "libraries": [
+        "atomic-tests",
+        "g2labs-log"
+    ]
+}
