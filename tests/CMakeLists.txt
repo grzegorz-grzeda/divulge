@@ -20,17 +20,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-cmake_minimum_required(VERSION 3.22)
-enable_testing()
-
-project(divulge)
-add_library(${PROJECT_NAME})
-
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    include(${CMAKE_CURRENT_LIST_DIR}/lib/atomic-tests/cmake/atomic-tests.cmake)
-endif()
-
-add_subdirectory(source)
-add_subdirectory(tests)
-add_subdirectory(lib)
-add_subdirectory(examples)
+atomic_tests_add(test-divulge test-divulge.c divulge)

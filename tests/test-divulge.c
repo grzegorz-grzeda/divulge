@@ -21,15 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef DIVULGE_H
-#define DIVULGE_H
-/**
- * @defgroup divulge Divulge
- * @brief Small HTTP router in C
- * @{
- */
+#include <setjmp.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+#include "cmocka.h"
 
-/**
- * @}
- */
-#endif  // DIVULGE_H
+#include "divulge.h"
+
+static void test_dummy(void** state) {}
+
+int main(int argc, char** argv) {
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_dummy),
+    };
+
+    return cmocka_run_group_tests(tests, NULL, NULL);
+}

@@ -19,5 +19,19 @@
                 }
             }
         }
+    },
+    "tests": {
+        "default": "tests",
+        "choices": {
+            "tests": {
+                "short": "Tests",
+                "settings": {
+                    "ATOMIC_TESTS_PERFORM": "1"
+                }
+            },
+            "no-tests": {
+                "short": "No tests"
+            }
+        }
     }
 }
