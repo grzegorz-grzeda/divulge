@@ -23,11 +23,66 @@
  */
 #include <stdio.h>
 
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
 #define G2LABS_LOG_MODULE_LEVEL G2LABS_LOG_MODULE_LEVEL_INFO
 #define G2LABS_LOG_MODULE_NAME "divulge-x64"
 #include "g2labs-log.h"
 
+#define DIVULGE_EXAMPLE_PORT (5000)
+#define DIVULGE_EXAMPLE_MAX_WAITING_CONNECTIONS (100)
+
+#define CHECK_IF_INVALID(x, msg) \
+    do {                         \
+        if ((x) < 0) {           \
+            E(msg);              \
+            exit(-1);            \
+        }                        \
+    } while (0)
+
 int main(void) {
     I("Divulge example running on Linux(x64)");
+
+    int socket_file_descriptor = socket(AF_INET, SOCK_STREAM, 0);
+    CHECK_IF_INVALID(socket_file_descriptor, "Could not create a new socket");
+    int true_value = 1;
+    setsockopt(socket_file_descriptor, SOL_SOCKET, SO_REUSEADDR, &true_value,
+               sizeof(int));
+    struct sockaddr_in serv_addr;
+    memset(&serv_addr, '0', sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_addr.sin_port = htons(DIVULGE_EXAMPLE_PORT);
+
+    int status = bind(socket_file_descriptor, (struct sockaddr*)&serv_addr,
+                      sizeof(serv_addr));
+    CHECK_IF_INVALID(status, "Could not bind to port");
+
+    status =
+        listen(socket_file_descriptor, DIVULGE_EXAMPLE_MAX_WAITING_CONNECTIONS);
+    CHECK_IF_INVALID(status, "Could not listen");
+
+    while (1) {
+        int connfd =
+            accept(socket_file_descriptor, (struct sockaddr*)NULL, NULL);
+        CHECK_IF_INVALID(connfd, "Could not accept a connection");
+        char sendBuff[1025];
+        char recvBuff[1025];
+        size_t bytes_read = read(connfd, recvBuff, sizeof(recvBuff) - 1);
+        recvBuff[bytes_read] = '\0';
+        printf("%s", recvBuff);
+        snprintf(sendBuff, sizeof(sendBuff) - 1,
+                 "HTTP/1.1 200 OK\r\n\r\nHello");
+        write(connfd, sendBuff, strlen(sendBuff));
+        close(connfd);
+    }
     return 0;
 }
