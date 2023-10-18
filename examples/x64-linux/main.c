@@ -71,18 +71,20 @@ int main(void) {
     CHECK_IF_INVALID(status, "Could not listen");
 
     while (1) {
-        int connfd =
+        int connection_file_descriptor =
             accept(socket_file_descriptor, (struct sockaddr*)NULL, NULL);
-        CHECK_IF_INVALID(connfd, "Could not accept a connection");
-        char sendBuff[1025];
+        CHECK_IF_INVALID(connection_file_descriptor,
+                         "Could not accept a connection");
         char recvBuff[1025];
-        size_t bytes_read = read(connfd, recvBuff, sizeof(recvBuff) - 1);
+        size_t bytes_read =
+            read(connection_file_descriptor, recvBuff, sizeof(recvBuff) - 1);
         recvBuff[bytes_read] = '\0';
         printf("%s", recvBuff);
+        char sendBuff[1025];
         snprintf(sendBuff, sizeof(sendBuff) - 1,
                  "HTTP/1.1 200 OK\r\n\r\nHello");
-        write(connfd, sendBuff, strlen(sendBuff));
-        close(connfd);
+        write(connection_file_descriptor, sendBuff, strlen(sendBuff));
+        close(connection_file_descriptor);
     }
     return 0;
 }
