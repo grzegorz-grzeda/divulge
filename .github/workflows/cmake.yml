@@ -22,6 +22,18 @@ jobs:
         repository: grzegorz-grzeda/atomic-tests
         path: ./lib/atomic-tests
 
+    - name: Checkout the `containers` package
+      uses: actions/checkout@v3
+      with:
+        repository: grzegorz-grzeda/containers
+        path: ./lib/containers
+
+    - name: Checkout the `g2labs-log` package
+      uses: actions/checkout@v3
+      with:
+        repository: grzegorz-grzeda/g2labs-log
+        path: ./lib/g2labs-log
+
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DATOMIC_TESTS_PERFORM=1
 
