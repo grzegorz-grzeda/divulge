@@ -40,8 +40,8 @@
 
 #define DIVULGE_EXAMPLE_PORT (5000)
 #define DIVULGE_EXAMPLE_MAX_WAITING_CONNECTIONS (100)
-#define DIVULGE_EXAMPLE_THREAD_POOL_SIZE (10)
-#define DIVULGE_EXAMPLE_REQUEST_BUFFER_SIZE (1024)
+#define DIVULGE_EXAMPLE_THREAD_POOL_SIZE (20)
+#define DIVULGE_EXAMPLE_BUFFER_SIZE (1024)
 
 static void socket_send_response(void* connection_context,
                                  const char* data,
@@ -52,7 +52,7 @@ static void socket_send_response(void* connection_context,
 
 static bool root_handler(divulge_request_t* request) {
     static int counter = 0;
-    char buffer[1024];
+    char buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
     snprintf(buffer, sizeof(buffer) - 1,
              "<h1>Hello from Divulge router!</h1><h3>Counter: %d</h3>",
              counter);
@@ -67,7 +67,7 @@ static bool root_handler(divulge_request_t* request) {
 }
 
 static bool default_404_handler(divulge_request_t* request) {
-    char buffer[1024];
+    char buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
     snprintf(buffer, sizeof(buffer) - 1,
              "<body><h2>Divulge Router Error</h2><code>Resource '%s' not "
              "found!</code></body>",
@@ -96,7 +96,7 @@ static void connection_handler(server_t* server,
                                server_connection_t* connection,
                                void* context) {
     divulge_t* router = (divulge_t*)context;
-    char buffer[DIVULGE_EXAMPLE_REQUEST_BUFFER_SIZE];
+    char buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
     size_t bytes_read = server_read(connection, buffer, sizeof(buffer) - 1);
     buffer[bytes_read] = '\0';
     divulge_process_request(router, connection, buffer, bytes_read);
