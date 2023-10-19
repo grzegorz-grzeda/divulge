@@ -70,6 +70,9 @@ void divulge_register_handler_for_route(divulge_t* divulge,
                                         divulge_route_method_t method,
                                         divulge_route_handler_t handler);
 
+void divulge_set_default_404_handler(divulge_t* divulge,
+                                     divulge_route_handler_t handler);
+
 void divulge_process_request(divulge_t* divulge,
                              void* connection_context,
                              const char* data,

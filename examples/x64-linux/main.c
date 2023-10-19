@@ -21,8 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#include <stdio.h>
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
@@ -34,11 +32,10 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
-#include "divulge.h"
 #define G2LABS_LOG_MODULE_LEVEL G2LABS_LOG_MODULE_LEVEL_INFO
 #define G2LABS_LOG_MODULE_NAME "divulge-x64"
+#include "divulge.h"
 #include "g2labs-log.h"
-#include "queue.h"
 #include "server.h"
 
 #define DIVULGE_EXAMPLE_PORT (5000)
@@ -54,11 +51,32 @@ static void socket_send_response(void* connection_context,
 }
 
 static bool root_handler(divulge_request_t* request) {
+    static int counter = 0;
+    char buffer[1024];
+    snprintf(buffer, sizeof(buffer) - 1,
+             "<h1>Hello from Divulge router!</h1><h3>Counter: %d</h3>",
+             counter);
+    counter++;
     divulge_response_t response = {
         .return_code = 200,
-        .payload = "<h1>Hello from Divulge :)</h1>",
+        .payload = buffer,
+        .payload_size = strlen(buffer),
     };
-    response.payload_size = strlen(response.payload);
+    divulge_respond(request, &response);
+    return true;
+}
+
+static bool default_404_handler(divulge_request_t* request) {
+    char buffer[1024];
+    snprintf(buffer, sizeof(buffer) - 1,
+             "<body><h2>Divulge Router Error</h2><code>Resource '%s' not "
+             "found!</code></body>",
+             request->route);
+    divulge_response_t response = {
+        .return_code = 200,
+        .payload = buffer,
+        .payload_size = strlen(buffer),
+    };
     divulge_respond(request, &response);
     return true;
 }
@@ -70,6 +88,7 @@ static divulge_t* initialize_router(void) {
     divulge_t* divulge = divulge_initialize(&configuration);
     divulge_register_handler_for_route(divulge, "/", DIVULGE_ROUTE_METHOD_GET,
                                        root_handler);
+    divulge_set_default_404_handler(divulge, default_404_handler);
     return divulge;
 }
 

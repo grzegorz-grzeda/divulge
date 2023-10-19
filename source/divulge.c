@@ -39,6 +39,7 @@ typedef struct route_entry {
 typedef struct divulge {
     divulge_configuration_t configuration;
     simple_list_t* routes;
+    divulge_route_handler_t default_404_handler;
 } divulge_t;
 
 static divulge_route_method_t convert_request_method_to_method_type(
@@ -62,11 +63,17 @@ static const char* convert_return_code_to_text(int return_code) {
     }
 }
 
-static void respond_with_404(divulge_request_t* request) {
-    divulge_response_t response = {.payload = "Resource not found",
-                                   .return_code = 404};
-    response.payload_size = strlen(response.payload);
+static bool respond_with_404(divulge_request_t* request) {
+    char buffer[1024];
+    snprintf(buffer, sizeof(buffer) - 1,
+             "Divulge Routing Error: resource '%s' not found!", request->route);
+    divulge_response_t response = {
+        .payload = buffer,
+        .payload_size = strlen(buffer),
+        .return_code = 404,
+    };
     divulge_respond(request, &response);
+    return true;
 }
 
 divulge_t* divulge_initialize(divulge_configuration_t* configuration) {
@@ -80,6 +87,7 @@ divulge_t* divulge_initialize(divulge_configuration_t* configuration) {
     memcpy(&divulge->configuration, configuration,
            sizeof(divulge_configuration_t));
     divulge->routes = create_simple_list();
+    divulge->default_404_handler = respond_with_404;
     return divulge;
 }
 
@@ -96,6 +104,14 @@ void divulge_register_handler_for_route(divulge_t* divulge,
     entry->method = method;
     entry->handler = handler;
     append_to_simple_list(divulge->routes, entry);
+}
+
+void divulge_set_default_404_handler(divulge_t* divulge,
+                                     divulge_route_handler_t handler) {
+    if (!divulge || !handler) {
+        return;
+    }
+    divulge->default_404_handler = handler;
 }
 
 void divulge_process_request(divulge_t* divulge,
@@ -130,7 +146,7 @@ void divulge_process_request(divulge_t* divulge,
         }
     }
     if (!was_route_handled) {
-        respond_with_404(&request);
+        divulge->default_404_handler(&request);
     }
     free(buffer);
 }
