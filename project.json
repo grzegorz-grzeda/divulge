@@ -1,6 +1,7 @@
 {
     "name": "divulge",
     "libraries": [
+        "containers",
         "atomic-tests",
         "g2labs-log"
     ]

@@ -7,6 +7,8 @@
         "*.css.liquid": "liquid-css",
         "*.scss.liquid": "liquid-scss",
         "*.in": "c",
-        "g2labs-log.h": "c"
+        "g2labs-log.h": "c",
+        "stddef.h": "c",
+        "simple-list.h": "c"
     }
 }

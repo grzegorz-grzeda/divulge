@@ -34,3 +34,5 @@ add_subdirectory(source)
 add_subdirectory(tests)
 add_subdirectory(lib)
 add_subdirectory(examples)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE containers g2labs-log)

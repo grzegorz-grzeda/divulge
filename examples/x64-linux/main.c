@@ -26,6 +26,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,13 +34,17 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include "divulge.h"
 #define G2LABS_LOG_MODULE_LEVEL G2LABS_LOG_MODULE_LEVEL_INFO
 #define G2LABS_LOG_MODULE_NAME "divulge-x64"
 #include "g2labs-log.h"
+#include "queue.h"
+#include "server.h"
 
 #define DIVULGE_EXAMPLE_PORT (5000)
 #define DIVULGE_EXAMPLE_MAX_WAITING_CONNECTIONS (100)
-
+#define DIVULGE_EXAMPLE_REQUEST_BUFFER_SIZE (1024)
+#define DIVULGE_EXAMPLE_THREAD_POOL_SIZE (10)
 #define CHECK_IF_INVALID(x, msg) \
     do {                         \
         if ((x) < 0) {           \
@@ -48,43 +53,54 @@
         }                        \
     } while (0)
 
+static void socket_send_response(void* connection_context,
+                                 const char* data,
+                                 size_t data_size) {
+    server_connection_t* connection = (server_connection_t*)connection_context;
+    server_write(connection, data, data_size);
+}
+
+static bool root_handler(divulge_request_t* request) {
+    divulge_response_t response = {
+        .return_code = 200,
+        .payload = "Hello from Divulge :)",
+    };
+    response.payload_size = strlen(response.payload);
+    divulge_respond(request, &response);
+    return true;
+}
+
+static divulge_t* initialize_router(void) {
+    divulge_configuration_t configuration = {
+        .socket_send_response_callback_t = socket_send_response,
+    };
+    divulge_t* divulge = divulge_initialize(&configuration);
+    divulge_register_handler_for_route(divulge, "/", DIVULGE_ROUTE_METHOD_GET,
+                                       root_handler);
+    return divulge;
+}
+
+static void connection_handler(server_t* server,
+                               server_connection_t* connection,
+                               void* context) {
+    divulge_t* router = (divulge_t*)context;
+    char buffer[DIVULGE_EXAMPLE_REQUEST_BUFFER_SIZE];
+    size_t bytes_read = server_read(connection, buffer, sizeof(buffer) - 1);
+    buffer[bytes_read] = '\0';
+    divulge_process_request(router, connection, buffer, bytes_read);
+    server_close(connection);
+}
+
 int main(void) {
     I("Divulge example running on Linux(x64)");
 
-    int socket_file_descriptor = socket(AF_INET, SOCK_STREAM, 0);
-    CHECK_IF_INVALID(socket_file_descriptor, "Could not create a new socket");
-    int true_value = 1;
-    setsockopt(socket_file_descriptor, SOL_SOCKET, SO_REUSEADDR, &true_value,
-               sizeof(int));
-    struct sockaddr_in serv_addr;
-    memset(&serv_addr, '0', sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serv_addr.sin_port = htons(DIVULGE_EXAMPLE_PORT);
+    divulge_t* router = initialize_router();
 
-    int status = bind(socket_file_descriptor, (struct sockaddr*)&serv_addr,
-                      sizeof(serv_addr));
-    CHECK_IF_INVALID(status, "Could not bind to port");
-
-    status =
-        listen(socket_file_descriptor, DIVULGE_EXAMPLE_MAX_WAITING_CONNECTIONS);
-    CHECK_IF_INVALID(status, "Could not listen");
-
-    while (1) {
-        int connection_file_descriptor =
-            accept(socket_file_descriptor, (struct sockaddr*)NULL, NULL);
-        CHECK_IF_INVALID(connection_file_descriptor,
-                         "Could not accept a connection");
-        char recvBuff[1025];
-        size_t bytes_read =
-            read(connection_file_descriptor, recvBuff, sizeof(recvBuff) - 1);
-        recvBuff[bytes_read] = '\0';
-        printf("%s", recvBuff);
-        char sendBuff[1025];
-        snprintf(sendBuff, sizeof(sendBuff) - 1,
-                 "HTTP/1.1 200 OK\r\n\r\nHello");
-        write(connection_file_descriptor, sendBuff, strlen(sendBuff));
-        close(connection_file_descriptor);
+    server_t* server = server_create(
+        DIVULGE_EXAMPLE_PORT, DIVULGE_EXAMPLE_MAX_WAITING_CONNECTIONS,
+        DIVULGE_EXAMPLE_THREAD_POOL_SIZE, connection_handler, router);
+    while (true) {
+        server_loop(server);
     }
     return 0;
 }

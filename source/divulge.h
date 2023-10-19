@@ -23,12 +23,59 @@
  */
 #ifndef DIVULGE_H
 #define DIVULGE_H
+
+#include <stdbool.h>
+#include <stddef.h>
 /**
  * @defgroup divulge Divulge
  * @brief Small HTTP router in C
  * @{
  */
+typedef enum divulge_route_method {
+    DIVULGE_ROUTE_METHOD_GET,
+    DIVULGE_ROUTE_METHOD_POST,
+    DIVULGE_ROUTE_METHOD_ANY,
+} divulge_route_method_t;
 
+typedef struct divulge divulge_t;
+
+typedef struct divulge_request {
+    divulge_t* divulge;
+    void* connection_context;
+    divulge_route_method_t method;
+    const char* route;
+    const char* header;
+    const char* payload;
+} divulge_request_t;
+
+typedef struct divulge_response {
+    int return_code;
+    const char* header;
+    const char* payload;
+    size_t payload_size;
+} divulge_response_t;
+
+typedef bool (*divulge_route_handler_t)(divulge_request_t* request);
+
+typedef struct divulge_configuration {
+    void (*socket_send_response_callback_t)(void* connection_context,
+                                            const char* data,
+                                            size_t data_size);
+} divulge_configuration_t;
+
+divulge_t* divulge_initialize(divulge_configuration_t* configuration);
+
+void divulge_register_handler_for_route(divulge_t* divulge,
+                                        const char* route,
+                                        divulge_route_method_t method,
+                                        divulge_route_handler_t handler);
+
+void divulge_process_request(divulge_t* divulge,
+                             void* connection_context,
+                             const char* data,
+                             size_t data_size);
+
+void divulge_respond(divulge_request_t* request, divulge_response_t* response);
 /**
  * @}
  */
