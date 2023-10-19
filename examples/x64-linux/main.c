@@ -43,15 +43,8 @@
 
 #define DIVULGE_EXAMPLE_PORT (5000)
 #define DIVULGE_EXAMPLE_MAX_WAITING_CONNECTIONS (100)
-#define DIVULGE_EXAMPLE_REQUEST_BUFFER_SIZE (1024)
 #define DIVULGE_EXAMPLE_THREAD_POOL_SIZE (10)
-#define CHECK_IF_INVALID(x, msg) \
-    do {                         \
-        if ((x) < 0) {           \
-            E(msg);              \
-            exit(-1);            \
-        }                        \
-    } while (0)
+#define DIVULGE_EXAMPLE_REQUEST_BUFFER_SIZE (1024)
 
 static void socket_send_response(void* connection_context,
                                  const char* data,
@@ -63,7 +56,7 @@ static void socket_send_response(void* connection_context,
 static bool root_handler(divulge_request_t* request) {
     divulge_response_t response = {
         .return_code = 200,
-        .payload = "Hello from Divulge :)",
+        .payload = "<h1>Hello from Divulge :)</h1>",
     };
     response.payload_size = strlen(response.payload);
     divulge_respond(request, &response);
