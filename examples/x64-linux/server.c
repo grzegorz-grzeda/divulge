@@ -36,8 +36,8 @@
 #include <unistd.h>
 #define G2LABS_LOG_MODULE_LEVEL G2LABS_LOG_MODULE_LEVEL_INFO
 #define G2LABS_LOG_MODULE_NAME "divulge-server"
+#include "dynamic-queue.h"
 #include "g2labs-log.h"
-#include "queue.h"
 
 #define CHECK_IF_INVALID(x, msg) \
     do {                         \
@@ -51,7 +51,7 @@ typedef struct server {
     pthread_t* thread_pool;
     pthread_mutex_t mutex;         // = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t condition_var;  // = PTHREAD_COND_INITIALIZER;
-    queue_t* pool_queue;
+    dynamic_queue_t* pool_queue;
     server_connection_handler_t connection_handler;
     void* connection_handler_context;
     int socket_fd;
@@ -65,10 +65,11 @@ static void* thread_pool_handler(void* context) {
     server_t* server = (server_t*)context;
     while (true) {
         pthread_mutex_lock(&server->mutex);
-        server_connection_t* connection = queue_dequeue(server->pool_queue);
+        server_connection_t* connection =
+            dynamic_queue_dequeue(server->pool_queue);
         if (!connection) {
             pthread_cond_wait(&server->condition_var, &server->mutex);
-            connection = queue_dequeue(server->pool_queue);
+            connection = dynamic_queue_dequeue(server->pool_queue);
         }
         pthread_mutex_unlock(&server->mutex);
         if (connection) {
@@ -90,7 +91,7 @@ server_t* server_create(uint16_t port,
     }
     server->connection_handler = connection_handler;
     server->connection_handler_context = connection_handler_context;
-    server->pool_queue = queue_initialize();
+    server->pool_queue = dynamic_queue_create();
     pthread_mutex_init(&server->mutex, NULL);
     pthread_cond_init(&server->condition_var, NULL);
     server->thread_pool = calloc(thread_pool_size, sizeof(pthread_t));
@@ -160,7 +161,7 @@ void server_loop(server_t* server) {
     server_connection_t* connection = calloc(1, sizeof(server_connection_t));
     connection->id = connection_fd;
     pthread_mutex_lock(&server->mutex);
-    queue_enqueue(server->pool_queue, connection);
+    dynamic_queue_enqueue(server->pool_queue, connection);
     pthread_cond_signal(&server->condition_var);
     pthread_mutex_unlock(&server->mutex);
 }

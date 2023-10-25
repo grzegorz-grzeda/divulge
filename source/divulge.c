@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "simple-list.h"
+#include "dynamic-list.h"
 
 #define G2LABS_LOG_MODULE_LEVEL G2LABS_LOG_MODULE_LEVEL_INFO
 #define G2LABS_LOG_MODULE_NAME "divulge"
@@ -38,7 +38,7 @@ typedef struct route_entry {
 } route_entry_t;
 typedef struct divulge {
     divulge_configuration_t configuration;
-    simple_list_t* routes;
+    dynamic_list_t* routes;
     divulge_route_handler_t default_404_handler;
 } divulge_t;
 
@@ -86,7 +86,7 @@ divulge_t* divulge_initialize(divulge_configuration_t* configuration) {
     }
     memcpy(&divulge->configuration, configuration,
            sizeof(divulge_configuration_t));
-    divulge->routes = create_simple_list();
+    divulge->routes = dynamic_list_create();
     divulge->default_404_handler = respond_with_404;
     return divulge;
 }
@@ -103,7 +103,7 @@ void divulge_register_handler_for_route(divulge_t* divulge,
     strcpy(entry->route, route);
     entry->method = method;
     entry->handler = handler;
-    append_to_simple_list(divulge->routes, entry);
+    dynamic_list_append(divulge->routes, entry);
 }
 
 void divulge_set_default_404_handler(divulge_t* divulge,
@@ -136,9 +136,9 @@ void divulge_process_request(divulge_t* divulge,
     divulge_route_method_t method =
         convert_request_method_to_method_type(method_name);
     bool was_route_handled = false;
-    for (simple_list_iterator_t* it = simple_list_begin(divulge->routes); it;
-         it = simple_list_next(it)) {
-        route_entry_t* entry = get_from_simple_list_iterator(it);
+    for (dynamic_list_iterator_t* it = dynamic_list_begin(divulge->routes); it;
+         it = dynamic_list_next(it)) {
+        route_entry_t* entry = dynamic_list_get(it);
         if ((entry->method == request.method) &&
             (strcmp(request.route, entry->route) == 0)) {
             entry->handler(&request);
