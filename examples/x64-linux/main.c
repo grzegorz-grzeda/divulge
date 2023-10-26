@@ -66,6 +66,16 @@ static bool root_handler(divulge_request_t* request) {
     return true;
 }
 
+static bool log_handler(divulge_request_t* request) {
+    divulge_response_t response = {
+        .return_code = 200,
+        .payload = "OK",
+        .payload_size = 2,
+    };
+    divulge_respond(request, &response);
+    return true;
+}
+
 static bool default_404_handler(divulge_request_t* request) {
     char buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
     snprintf(buffer, sizeof(buffer) - 1,
@@ -81,13 +91,25 @@ static bool default_404_handler(divulge_request_t* request) {
     return true;
 }
 
+static divulge_uri_t root_uri = {
+    .uri = "/",
+    .handler = root_handler,
+    .method = DIVULGE_ROUTE_METHOD_GET,
+};
+
+static divulge_uri_t log_uri = {
+    .uri = "/log",
+    .handler = log_handler,
+    .method = DIVULGE_ROUTE_METHOD_GET,
+};
+
 static divulge_t* initialize_router(void) {
     divulge_configuration_t configuration = {
         .socket_send_response_callback_t = socket_send_response,
     };
     divulge_t* divulge = divulge_initialize(&configuration);
-    divulge_register_handler_for_route(divulge, "/", DIVULGE_ROUTE_METHOD_GET,
-                                       root_handler);
+    divulge_register_uri(divulge, &root_uri);
+    divulge_register_uri(divulge, &log_uri);
     divulge_set_default_404_handler(divulge, default_404_handler);
     return divulge;
 }
@@ -96,10 +118,14 @@ static void connection_handler(server_t* server,
                                server_connection_t* connection,
                                void* context) {
     divulge_t* router = (divulge_t*)context;
-    char buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
-    size_t bytes_read = server_read(connection, buffer, sizeof(buffer) - 1);
-    buffer[bytes_read] = '\0';
-    divulge_process_request(router, connection, buffer, bytes_read);
+    char request_buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
+    char response_buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
+    size_t request_bytes_read =
+        server_read(connection, request_buffer, sizeof(request_buffer) - 1);
+    request_buffer[request_bytes_read] = '\0';
+    divulge_process_request(router, connection, request_buffer,
+                            request_bytes_read, response_buffer,
+                            sizeof(response_buffer));
     server_close(connection);
 }
 

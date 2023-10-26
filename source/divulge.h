@@ -31,21 +31,24 @@
  * @brief Small HTTP router in C
  * @{
  */
+typedef struct divulge divulge_t;
+
 typedef enum divulge_route_method {
     DIVULGE_ROUTE_METHOD_GET,
     DIVULGE_ROUTE_METHOD_POST,
     DIVULGE_ROUTE_METHOD_ANY,
 } divulge_route_method_t;
 
-typedef struct divulge divulge_t;
-
 typedef struct divulge_request {
     divulge_t* divulge;
+    void* handler_context;
     void* connection_context;
     divulge_route_method_t method;
     const char* route;
     const char* header;
     const char* payload;
+    char* _response_buffer;
+    size_t _response_buffer_size;
 } divulge_request_t;
 
 typedef struct divulge_response {
@@ -57,6 +60,13 @@ typedef struct divulge_response {
 
 typedef bool (*divulge_route_handler_t)(divulge_request_t* request);
 
+typedef struct divulge_uri {
+    const char* uri;
+    void* handler_context;
+    divulge_route_method_t method;
+    divulge_route_handler_t handler;
+} divulge_uri_t;
+
 typedef struct divulge_configuration {
     void (*socket_send_response_callback_t)(void* connection_context,
                                             const char* data,
@@ -65,18 +75,17 @@ typedef struct divulge_configuration {
 
 divulge_t* divulge_initialize(divulge_configuration_t* configuration);
 
-void divulge_register_handler_for_route(divulge_t* divulge,
-                                        const char* route,
-                                        divulge_route_method_t method,
-                                        divulge_route_handler_t handler);
+void divulge_register_uri(divulge_t* divulge, divulge_uri_t* uri);
 
 void divulge_set_default_404_handler(divulge_t* divulge,
                                      divulge_route_handler_t handler);
 
 void divulge_process_request(divulge_t* divulge,
                              void* connection_context,
-                             const char* data,
-                             size_t data_size);
+                             char* request_buffer,
+                             size_t request_buffer_size,
+                             const char* response_buffer,
+                             size_t response_buffer_size);
 
 void divulge_respond(divulge_request_t* request, divulge_response_t* response);
 /**

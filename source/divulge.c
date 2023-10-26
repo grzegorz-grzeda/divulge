@@ -32,9 +32,7 @@
 #include "g2labs-log.h"
 
 typedef struct route_entry {
-    char* route;
-    divulge_route_method_t method;
-    divulge_route_handler_t handler;
+    divulge_uri_t uri;
 } route_entry_t;
 typedef struct divulge {
     divulge_configuration_t configuration;
@@ -91,18 +89,12 @@ divulge_t* divulge_initialize(divulge_configuration_t* configuration) {
     return divulge;
 }
 
-void divulge_register_handler_for_route(divulge_t* divulge,
-                                        const char* route,
-                                        divulge_route_method_t method,
-                                        divulge_route_handler_t handler) {
-    if (!divulge || !route || !handler) {
+void divulge_register_uri(divulge_t* divulge, divulge_uri_t* uri) {
+    if (!divulge || !uri || !uri->handler || !uri->uri) {
         return;
     }
     route_entry_t* entry = calloc(1, sizeof(route_entry_t));
-    entry->route = calloc(strlen(route) + 1, sizeof(char));
-    strcpy(entry->route, route);
-    entry->method = method;
-    entry->handler = handler;
+    memcpy(&entry->uri, uri, sizeof(*uri));
     dynamic_list_append(divulge->routes, entry);
 }
 
@@ -116,9 +108,12 @@ void divulge_set_default_404_handler(divulge_t* divulge,
 
 void divulge_process_request(divulge_t* divulge,
                              void* connection_context,
-                             const char* data,
-                             size_t data_size) {
-    if (!divulge || !data || (data_size == 0)) {
+                             char* request_buffer,
+                             size_t request_buffer_size,
+                             const char* response_buffer,
+                             size_t response_buffer_size) {
+    if (!divulge || !request_buffer || (request_buffer_size == 0) ||
+        !response_buffer || (response_buffer_size == 0)) {
         return;
     }
     divulge_request_t request = {
@@ -127,11 +122,11 @@ void divulge_process_request(divulge_t* divulge,
         .header = NULL,
         .payload = NULL,
     };
-    char* buffer = calloc(data_size + 1, sizeof(char));
-    strncpy(buffer, data, data_size);
-    char* method_name = strtok(buffer, " ");
+    char* method_name = strtok(request_buffer, " ");
     request.route = strtok(NULL, " ");
     request.method = convert_request_method_to_method_type(method_name);
+    request._response_buffer = response_buffer;
+    request._response_buffer_size = response_buffer_size;
     D("Received request: [%s] %s", method_name, request.route);
     divulge_route_method_t method =
         convert_request_method_to_method_type(method_name);
@@ -139,28 +134,29 @@ void divulge_process_request(divulge_t* divulge,
     for (dynamic_list_iterator_t* it = dynamic_list_begin(divulge->routes); it;
          it = dynamic_list_next(it)) {
         route_entry_t* entry = dynamic_list_get(it);
-        if ((entry->method == request.method) &&
-            (strcmp(request.route, entry->route) == 0)) {
-            entry->handler(&request);
+        if ((entry->uri.method == request.method) &&
+            (strcmp(request.route, entry->uri.uri) == 0)) {
+            request.handler_context = entry->uri.handler_context;
+            entry->uri.handler(&request);
             was_route_handled = true;
         }
     }
     if (!was_route_handled) {
         divulge->default_404_handler(&request);
     }
-    free(buffer);
 }
 
 void divulge_respond(divulge_request_t* request, divulge_response_t* response) {
-    if (!request || !response) {
+    if (!request || !response || !request->_response_buffer ||
+        (request->_response_buffer_size < 2)) {
         return;
     }
-    char buffer[8 * 1024 + 1];
-    snprintf(buffer, sizeof(buffer) - 1, "HTTP/1.1 %d %s\r\n\r\n%*s",
-             response->return_code,
+    snprintf(request->_response_buffer, request->_response_buffer_size - 1,
+             "HTTP/1.1 %d %s\r\n\r\n%*s", response->return_code,
              convert_return_code_to_text(response->return_code),
              (int)response->payload_size, response->payload);
 
+    size_t response_size = strlen(request->_response_buffer);
     request->divulge->configuration.socket_send_response_callback_t(
-        request->connection_context, buffer, strlen(buffer));
+        request->connection_context, request->_response_buffer, response_size);
 }

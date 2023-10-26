@@ -9,6 +9,9 @@
         "*.in": "c",
         "g2labs-log.h": "c",
         "stddef.h": "c",
-        "simple-list.h": "c"
+        "simple-list.h": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c"
     }
 }
