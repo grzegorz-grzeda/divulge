@@ -66,14 +66,14 @@ typedef struct divulge_response {
     size_t payload_size;
 } divulge_response_t;
 
-typedef bool (*divulge_route_handler_t)(divulge_request_t* request,
-                                        void* context);
+typedef bool (*divulge_uri_handler_t)(divulge_request_t* request,
+                                      void* context);
 
 typedef struct divulge_uri {
     const char* uri;
-    void* handler_context;
+    void* context;
     divulge_route_method_t method;
-    divulge_route_handler_t handler;
+    divulge_uri_handler_t handler;
 } divulge_uri_t;
 
 typedef void (*divulge_socket_send_callback_t)(void* connection_context,
@@ -87,12 +87,20 @@ typedef struct divulge_configuration {
     divulge_socket_close_callback_t close;
 } divulge_configuration_t;
 
+const char* divulge_method_name_from_method(divulge_route_method_t method);
+
 divulge_t* divulge_initialize(divulge_configuration_t* configuration);
 
 void divulge_register_uri(divulge_t* divulge, divulge_uri_t* uri);
 
+void divulge_add_middleware_to_uri(divulge_t* divulge,
+                                   divulge_uri_t* uri,
+                                   divulge_uri_handler_t middleware,
+                                   void* context);
+
 void divulge_set_default_404_handler(divulge_t* divulge,
-                                     divulge_route_handler_t handler);
+                                     divulge_uri_handler_t handler,
+                                     void* context);
 
 void divulge_process_request(divulge_t* divulge,
                              void* connection_context,
@@ -102,6 +110,12 @@ void divulge_process_request(divulge_t* divulge,
                              size_t response_buffer_size);
 
 void divulge_send_status(divulge_request_t* request, int return_code);
+
+void divulge_send_header(divulge_request_t* request,
+                         divulge_response_t* response);
+
+void divulge_send_payload(divulge_request_t* request,
+                          divulge_response_t* response);
 
 void divulge_respond(divulge_request_t* request, divulge_response_t* response);
 /**

@@ -31,13 +31,20 @@
 #define G2LABS_LOG_MODULE_NAME "divulge"
 #include "g2labs-log.h"
 
+#define DIVULGE_SERVER_NAME "Divulge"
+typedef struct middleware_entry {
+    divulge_uri_handler_t handler;
+    void* context;
+} middleware_entry_t;
 typedef struct route_entry {
     divulge_uri_t uri;
+    dynamic_list_t* middlewares;
 } route_entry_t;
 typedef struct divulge {
     divulge_configuration_t configuration;
     dynamic_list_t* routes;
-    divulge_route_handler_t default_404_handler;
+    divulge_uri_handler_t default_404_handler;
+    void* default_404_handler_context;
 } divulge_t;
 
 typedef struct divulge_request_context {
@@ -46,7 +53,18 @@ typedef struct divulge_request_context {
     char* response_buffer;
     size_t response_buffer_size;
     bool was_status_sent;
+    bool was_header_sent;
 } divulge_request_context_t;
+
+const char* divulge_method_name_from_method(divulge_route_method_t method) {
+    if (method == DIVULGE_ROUTE_METHOD_GET) {
+        return "GET";
+    } else if (method == DIVULGE_ROUTE_METHOD_POST) {
+        return "POST";
+    } else {
+        return "ANY";
+    }
+}
 
 static divulge_route_method_t convert_request_method_to_method_type(
     const char* method_name) {
@@ -102,15 +120,39 @@ void divulge_register_uri(divulge_t* divulge, divulge_uri_t* uri) {
         return;
     }
     route_entry_t* entry = calloc(1, sizeof(route_entry_t));
+    entry->middlewares = dynamic_list_create();
     memcpy(&entry->uri, uri, sizeof(*uri));
     dynamic_list_append(divulge->routes, entry);
 }
 
+void divulge_add_middleware_to_uri(divulge_t* divulge,
+                                   divulge_uri_t* uri,
+                                   divulge_uri_handler_t middleware,
+                                   void* context) {
+    if (!divulge || !uri || !middleware) {
+        return;
+    }
+    for (dynamic_list_iterator_t* it = dynamic_list_begin(divulge->routes); it;
+         it = dynamic_list_next(it)) {
+        route_entry_t* entry = dynamic_list_get(it);
+        if ((entry->uri.method == uri->method) &&
+            (strcmp(entry->uri.uri, uri->uri) == 0)) {
+            middleware_entry_t* middleware_entry =
+                calloc(1, sizeof(middleware_entry_t));
+            middleware_entry->context = context;
+            middleware_entry->handler = middleware;
+            dynamic_list_append(entry->middlewares, middleware_entry);
+        }
+    }
+}
+
 void divulge_set_default_404_handler(divulge_t* divulge,
-                                     divulge_route_handler_t handler) {
+                                     divulge_uri_handler_t handler,
+                                     void* context) {
     if (!divulge || !handler) {
         return;
     }
+    divulge->default_404_handler_context = context;
     divulge->default_404_handler = handler;
 }
 
@@ -134,6 +176,7 @@ void divulge_process_request(divulge_t* divulge,
         .response_buffer = response_buffer,
         .response_buffer_size = response_buffer_size,
         .was_status_sent = false,
+        .was_header_sent = false,
     };
 
     char* method_name = strtok(request_buffer, " ");
@@ -147,14 +190,21 @@ void divulge_process_request(divulge_t* divulge,
     for (dynamic_list_iterator_t* it = dynamic_list_begin(divulge->routes); it;
          it = dynamic_list_next(it)) {
         route_entry_t* entry = dynamic_list_get(it);
+        for (dynamic_list_iterator_t* jt =
+                 dynamic_list_begin(entry->middlewares);
+             jt; jt = dynamic_list_next(jt)) {
+            middleware_entry_t* middleware_entry = dynamic_list_get(jt);
+            middleware_entry->handler(&request, middleware_entry->context);
+        }
         if ((entry->uri.method == request.method) &&
             (strcmp(request.route, entry->uri.uri) == 0)) {
-            entry->uri.handler(&request, entry->uri.handler_context);
+            entry->uri.handler(&request, entry->uri.context);
             was_route_handled = true;
         }
     }
     if (!was_route_handled) {
-        divulge->default_404_handler(&request, NULL);
+        divulge->default_404_handler(&request,
+                                     divulge->default_404_handler_context);
     }
     if (divulge->configuration.close) {
         divulge->configuration.close(connection_context);
@@ -162,7 +212,7 @@ void divulge_process_request(divulge_t* divulge,
 }
 
 void divulge_send_status(divulge_request_t* request, int return_code) {
-    if (request->context->was_status_sent) {
+    if (!request || request->context->was_status_sent) {
         return;
     }
     size_t size =
@@ -174,9 +224,9 @@ void divulge_send_status(divulge_request_t* request, int return_code) {
     request->context->was_status_sent = true;
 }
 
-static void send_header(divulge_request_t* request,
-                        const char* key,
-                        const char* value) {
+static void send_header_entry(divulge_request_t* request,
+                              const char* key,
+                              const char* value) {
     if (!request->context->was_status_sent) {
         return;
     }
@@ -187,25 +237,31 @@ static void send_header(divulge_request_t* request,
         size);
 }
 
-static void send_header_entry(divulge_request_t* request,
-                              divulge_header_entry_t* entry) {
-    send_header(request, entry->key, entry->value);
-}
-
-void divulge_respond(divulge_request_t* request, divulge_response_t* response) {
-    if (!request || !response || !request->context->response_buffer ||
-        (request->context->response_buffer_size < 2)) {
+void divulge_send_header(divulge_request_t* request,
+                         divulge_response_t* response) {
+    if (!request || !response || request->context->was_header_sent) {
         return;
     }
-    divulge_send_status(request, response->return_code);
-    send_header(request, "Server", "Divulge");
-
+    if (!request->context->was_status_sent) {
+        divulge_send_status(request, response->return_code);
+    }
+    send_header_entry(request, "Server", DIVULGE_SERVER_NAME);
     if (response->header.entries && (response->header.count > 0)) {
         for (size_t i = 0; i < response->header.count; i++) {
-            send_header_entry(request, response->header.entries + i);
+            divulge_header_entry_t* entry = response->header.entries + i;
+            send_header_entry(request, entry->key, entry->value);
         }
     }
+}
 
+void divulge_send_payload(divulge_request_t* request,
+                          divulge_response_t* response) {
+    if (!request || !response) {
+        return;
+    }
+    if (!request->context->was_header_sent) {
+        divulge_send_header(request, response);
+    }
     size_t response_size =
         (size_t)snprintf(request->context->response_buffer,
                          request->context->response_buffer_size - 1, "\r\n%*s",
@@ -214,4 +270,13 @@ void divulge_respond(divulge_request_t* request, divulge_response_t* response) {
     request->context->divulge->configuration.send(
         request->context->connection_context, request->context->response_buffer,
         response_size);
+}
+
+void divulge_respond(divulge_request_t* request, divulge_response_t* response) {
+    if (!request || !response) {
+        return;
+    }
+    divulge_send_status(request, response->return_code);
+    divulge_send_header(request, response);
+    divulge_send_payload(request, response);
 }
