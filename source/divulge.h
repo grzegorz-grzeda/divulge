@@ -49,9 +49,19 @@ typedef struct divulge_request {
     const char* payload;
 } divulge_request_t;
 
+typedef struct divulge_header_entry {
+    const char* key;
+    const char* value;
+} divulge_header_entry_t;
+
+typedef struct divulge_header {
+    divulge_header_entry_t* entries;
+    size_t count;
+} divulge_header_t;
+
 typedef struct divulge_response {
     int return_code;
-    const char* header;
+    divulge_header_t header;
     const char* payload;
     size_t payload_size;
 } divulge_response_t;

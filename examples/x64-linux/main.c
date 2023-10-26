@@ -62,8 +62,16 @@ static bool root_handler(divulge_request_t* request, void* context) {
              "<h1>Hello from Divulge router!</h1><h3>Counter: %d</h3>",
              counter);
     counter++;
+    divulge_header_entry_t header_entries[] = {
+        {.key = "Content-Type", .value = "text/html"},
+    };
     divulge_response_t response = {
         .return_code = 200,
+        .header =
+            {
+                .count = 1,
+                .entries = header_entries,
+            },
         .payload = buffer,
         .payload_size = strlen(buffer),
     };

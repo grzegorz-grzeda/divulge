@@ -43,8 +43,9 @@ typedef struct divulge {
 typedef struct divulge_request_context {
     divulge_t* divulge;
     void* connection_context;
-    char* _response_buffer;
-    size_t _response_buffer_size;
+    char* response_buffer;
+    size_t response_buffer_size;
+    bool was_status_sent;
 } divulge_request_context_t;
 
 static divulge_route_method_t convert_request_method_to_method_type(
@@ -130,8 +131,9 @@ void divulge_process_request(divulge_t* divulge,
     divulge_request_context_t request_context = {
         .divulge = divulge,
         .connection_context = connection_context,
-        ._response_buffer = response_buffer,
-        ._response_buffer_size = response_buffer_size,
+        .response_buffer = response_buffer,
+        .response_buffer_size = response_buffer_size,
+        .was_status_sent = false,
     };
 
     char* method_name = strtok(request_buffer, " ");
@@ -160,26 +162,56 @@ void divulge_process_request(divulge_t* divulge,
 }
 
 void divulge_send_status(divulge_request_t* request, int return_code) {
-    size_t size = (size_t)sprintf(request->context->_response_buffer,
-                                  "HTTP/1.1 %d %s\r\n", return_code,
-                                  convert_return_code_to_text(return_code));
+    if (request->context->was_status_sent) {
+        return;
+    }
+    size_t size =
+        (size_t)sprintf(request->context->response_buffer, "HTTP/1.1 %d %s\r\n",
+                        return_code, convert_return_code_to_text(return_code));
     request->context->divulge->configuration.send(
-        request->context->connection_context,
-        request->context->_response_buffer, size);
+        request->context->connection_context, request->context->response_buffer,
+        size);
+    request->context->was_status_sent = true;
+}
+
+static void send_header(divulge_request_t* request,
+                        const char* key,
+                        const char* value) {
+    if (!request->context->was_status_sent) {
+        return;
+    }
+    size_t size = (size_t)sprintf(request->context->response_buffer,
+                                  "%s: %s\r\n", key, value);
+    request->context->divulge->configuration.send(
+        request->context->connection_context, request->context->response_buffer,
+        size);
+}
+
+static void send_header_entry(divulge_request_t* request,
+                              divulge_header_entry_t* entry) {
+    send_header(request, entry->key, entry->value);
 }
 
 void divulge_respond(divulge_request_t* request, divulge_response_t* response) {
-    if (!request || !response || !request->context->_response_buffer ||
-        (request->context->_response_buffer_size < 2)) {
+    if (!request || !response || !request->context->response_buffer ||
+        (request->context->response_buffer_size < 2)) {
         return;
     }
     divulge_send_status(request, response->return_code);
+    send_header(request, "Server", "Divulge");
+
+    if (response->header.entries && (response->header.count > 0)) {
+        for (size_t i = 0; i < response->header.count; i++) {
+            send_header_entry(request, response->header.entries + i);
+        }
+    }
+
     size_t response_size =
-        (size_t)snprintf(request->context->_response_buffer,
-                         request->context->_response_buffer_size - 1, "\r\n%*s",
+        (size_t)snprintf(request->context->response_buffer,
+                         request->context->response_buffer_size - 1, "\r\n%*s",
                          (int)response->payload_size, response->payload);
 
     request->context->divulge->configuration.send(
-        request->context->connection_context,
-        request->context->_response_buffer, response_size);
+        request->context->connection_context, request->context->response_buffer,
+        response_size);
 }
