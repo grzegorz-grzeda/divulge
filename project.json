@@ -3,6 +3,7 @@
     "libraries": [
         "containers",
         "atomic-tests",
-        "g2labs-log"
+        "g2labs-log",
+        "encodings"
     ]
 }

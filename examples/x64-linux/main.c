@@ -34,6 +34,7 @@
 #include <unistd.h>
 #define G2LABS_LOG_MODULE_LEVEL G2LABS_LOG_MODULE_LEVEL_INFO
 #define G2LABS_LOG_MODULE_NAME "divulge-x64"
+#include "divulge-basic-authentication.h"
 #include "divulge.h"
 #include "g2labs-log.h"
 #include "server.h"
@@ -79,6 +80,29 @@ static bool root_handler(divulge_request_t* request, void* context) {
     return true;
 }
 
+static bool restricted_access_handler(divulge_request_t* request,
+                                      void* context) {
+    char buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
+    snprintf(buffer, sizeof(buffer) - 1,
+             "<h2>Restricted access area!</h2><p>If you can see this, it means "
+             "you logged in :)</p>");
+    divulge_header_entry_t header_entries[] = {
+        {.key = "Content-Type", .value = "text/html"},
+    };
+    divulge_response_t response = {
+        .return_code = 200,
+        .header =
+            {
+                .count = 1,
+                .entries = header_entries,
+            },
+        .payload = buffer,
+        .payload_size = strlen(buffer),
+    };
+    divulge_respond(request, &response);
+    return true;
+}
+
 static bool default_404_handler(divulge_request_t* request, void* context) {
     char buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
     snprintf(buffer, sizeof(buffer) - 1,
@@ -86,7 +110,7 @@ static bool default_404_handler(divulge_request_t* request, void* context) {
              "found!</code></body>",
              request->route);
     divulge_response_t response = {
-        .return_code = 200,
+        .return_code = 404,
         .payload = buffer,
         .payload_size = strlen(buffer),
     };
@@ -96,14 +120,32 @@ static bool default_404_handler(divulge_request_t* request, void* context) {
 
 static divulge_uri_t root_uri = {
     .uri = "/",
-    .handler = root_handler,
+    .handler = {.handler = root_handler},
     .method = DIVULGE_ROUTE_METHOD_GET,
 };
 
-static bool logger_middleware(divulge_request_t* request, void* context) {
+static divulge_uri_t restricted_uri = {
+    .uri = "/restricted",
+    .handler = {.handler = restricted_access_handler},
+    .method = DIVULGE_ROUTE_METHOD_GET,
+};
+
+static bool logger_middleware_handler(divulge_request_t* request,
+                                      void* context) {
     I("[%s] '%s'", divulge_method_name_from_method(request->method),
       request->route);
     return true;
+}
+
+static divulge_handler_object_t logger_middleware = {
+    .handler = logger_middleware_handler,
+    .context = NULL,
+};
+
+static bool authenticate_user(void* context,
+                              const char* username,
+                              const char* password) {
+    return ((strcmp(username, "g2") == 0) && (strcmp(password, "g3") == 0));
 }
 
 static divulge_t* initialize_router(void) {
@@ -113,7 +155,11 @@ static divulge_t* initialize_router(void) {
     };
     divulge_t* divulge = divulge_initialize(&configuration);
     divulge_register_uri(divulge, &root_uri);
-    divulge_add_middleware_to_uri(divulge, &root_uri, logger_middleware, NULL);
+    divulge_add_middleware_to_uri(divulge, &root_uri, &logger_middleware);
+    divulge_register_uri(divulge, &restricted_uri);
+    divulge_add_middleware_to_uri(divulge, &restricted_uri,
+                                  divulge_basic_authentication_create(
+                                      "G2Labs realm", authenticate_user, NULL));
     divulge_set_default_404_handler(divulge, default_404_handler, NULL);
     return divulge;
 }
