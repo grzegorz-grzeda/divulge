@@ -39,16 +39,14 @@ typedef enum divulge_route_method {
     DIVULGE_ROUTE_METHOD_ANY,
 } divulge_route_method_t;
 
+typedef struct divulge_request_context divulge_request_context_t;
+
 typedef struct divulge_request {
-    divulge_t* divulge;
-    void* handler_context;
-    void* connection_context;
+    divulge_request_context_t* context;
     divulge_route_method_t method;
     const char* route;
     const char* header;
     const char* payload;
-    char* _response_buffer;
-    size_t _response_buffer_size;
 } divulge_request_t;
 
 typedef struct divulge_response {
@@ -58,7 +56,8 @@ typedef struct divulge_response {
     size_t payload_size;
 } divulge_response_t;
 
-typedef bool (*divulge_route_handler_t)(divulge_request_t* request);
+typedef bool (*divulge_route_handler_t)(divulge_request_t* request,
+                                        void* context);
 
 typedef struct divulge_uri {
     const char* uri;
@@ -67,10 +66,15 @@ typedef struct divulge_uri {
     divulge_route_handler_t handler;
 } divulge_uri_t;
 
+typedef void (*divulge_socket_send_callback_t)(void* connection_context,
+                                               const char* data,
+                                               size_t data_size);
+
+typedef void (*divulge_socket_close_callback_t)(void* connection_context);
+
 typedef struct divulge_configuration {
-    void (*socket_send_response_callback_t)(void* connection_context,
-                                            const char* data,
-                                            size_t data_size);
+    divulge_socket_send_callback_t send;
+    divulge_socket_close_callback_t close;
 } divulge_configuration_t;
 
 divulge_t* divulge_initialize(divulge_configuration_t* configuration);
@@ -84,8 +88,10 @@ void divulge_process_request(divulge_t* divulge,
                              void* connection_context,
                              char* request_buffer,
                              size_t request_buffer_size,
-                             const char* response_buffer,
+                             char* response_buffer,
                              size_t response_buffer_size);
+
+void divulge_send_status(divulge_request_t* request, int return_code);
 
 void divulge_respond(divulge_request_t* request, divulge_response_t* response);
 /**

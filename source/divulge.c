@@ -40,6 +40,13 @@ typedef struct divulge {
     divulge_route_handler_t default_404_handler;
 } divulge_t;
 
+typedef struct divulge_request_context {
+    divulge_t* divulge;
+    void* connection_context;
+    char* _response_buffer;
+    size_t _response_buffer_size;
+} divulge_request_context_t;
+
 static divulge_route_method_t convert_request_method_to_method_type(
     const char* method_name) {
     if (strcmp(method_name, "GET") == 0) {
@@ -61,7 +68,7 @@ static const char* convert_return_code_to_text(int return_code) {
     }
 }
 
-static bool respond_with_404(divulge_request_t* request) {
+static bool respond_with_404(divulge_request_t* request, void* context) {
     char buffer[1024];
     snprintf(buffer, sizeof(buffer) - 1,
              "Divulge Routing Error: resource '%s' not found!", request->route);
@@ -75,7 +82,7 @@ static bool respond_with_404(divulge_request_t* request) {
 }
 
 divulge_t* divulge_initialize(divulge_configuration_t* configuration) {
-    if (!configuration || !configuration->socket_send_response_callback_t) {
+    if (!configuration || !configuration->send || !configuration->close) {
         return NULL;
     }
     divulge_t* divulge = calloc(1, sizeof(divulge_t));
@@ -110,23 +117,27 @@ void divulge_process_request(divulge_t* divulge,
                              void* connection_context,
                              char* request_buffer,
                              size_t request_buffer_size,
-                             const char* response_buffer,
+                             char* response_buffer,
                              size_t response_buffer_size) {
     if (!divulge || !request_buffer || (request_buffer_size == 0) ||
         !response_buffer || (response_buffer_size == 0)) {
         return;
     }
     divulge_request_t request = {
-        .divulge = divulge,
-        .connection_context = connection_context,
         .header = NULL,
         .payload = NULL,
     };
+    divulge_request_context_t request_context = {
+        .divulge = divulge,
+        .connection_context = connection_context,
+        ._response_buffer = response_buffer,
+        ._response_buffer_size = response_buffer_size,
+    };
+
     char* method_name = strtok(request_buffer, " ");
     request.route = strtok(NULL, " ");
     request.method = convert_request_method_to_method_type(method_name);
-    request._response_buffer = response_buffer;
-    request._response_buffer_size = response_buffer_size;
+    request.context = &request_context;
     D("Received request: [%s] %s", method_name, request.route);
     divulge_route_method_t method =
         convert_request_method_to_method_type(method_name);
@@ -136,27 +147,39 @@ void divulge_process_request(divulge_t* divulge,
         route_entry_t* entry = dynamic_list_get(it);
         if ((entry->uri.method == request.method) &&
             (strcmp(request.route, entry->uri.uri) == 0)) {
-            request.handler_context = entry->uri.handler_context;
-            entry->uri.handler(&request);
+            entry->uri.handler(&request, entry->uri.handler_context);
             was_route_handled = true;
         }
     }
     if (!was_route_handled) {
-        divulge->default_404_handler(&request);
+        divulge->default_404_handler(&request, NULL);
+    }
+    if (divulge->configuration.close) {
+        divulge->configuration.close(connection_context);
     }
 }
 
+void divulge_send_status(divulge_request_t* request, int return_code) {
+    size_t size = (size_t)sprintf(request->context->_response_buffer,
+                                  "HTTP/1.1 %d %s\r\n", return_code,
+                                  convert_return_code_to_text(return_code));
+    request->context->divulge->configuration.send(
+        request->context->connection_context,
+        request->context->_response_buffer, size);
+}
+
 void divulge_respond(divulge_request_t* request, divulge_response_t* response) {
-    if (!request || !response || !request->_response_buffer ||
-        (request->_response_buffer_size < 2)) {
+    if (!request || !response || !request->context->_response_buffer ||
+        (request->context->_response_buffer_size < 2)) {
         return;
     }
-    snprintf(request->_response_buffer, request->_response_buffer_size - 1,
-             "HTTP/1.1 %d %s\r\n\r\n%*s", response->return_code,
-             convert_return_code_to_text(response->return_code),
-             (int)response->payload_size, response->payload);
+    divulge_send_status(request, response->return_code);
+    size_t response_size =
+        (size_t)snprintf(request->context->_response_buffer,
+                         request->context->_response_buffer_size - 1, "\r\n%*s",
+                         (int)response->payload_size, response->payload);
 
-    size_t response_size = strlen(request->_response_buffer);
-    request->divulge->configuration.socket_send_response_callback_t(
-        request->connection_context, request->_response_buffer, response_size);
+    request->context->divulge->configuration.send(
+        request->context->connection_context,
+        request->context->_response_buffer, response_size);
 }

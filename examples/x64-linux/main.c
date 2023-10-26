@@ -50,7 +50,12 @@ static void socket_send_response(void* connection_context,
     server_write(connection, data, data_size);
 }
 
-static bool root_handler(divulge_request_t* request) {
+static void socket_close(void* connection_context) {
+    server_connection_t* connection = (server_connection_t*)connection_context;
+    server_close(connection);
+}
+
+static bool root_handler(divulge_request_t* request, void* context) {
     static int counter = 0;
     char buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
     snprintf(buffer, sizeof(buffer) - 1,
@@ -66,7 +71,7 @@ static bool root_handler(divulge_request_t* request) {
     return true;
 }
 
-static bool log_handler(divulge_request_t* request) {
+static bool log_handler(divulge_request_t* request, void* context) {
     divulge_response_t response = {
         .return_code = 200,
         .payload = "OK",
@@ -76,7 +81,7 @@ static bool log_handler(divulge_request_t* request) {
     return true;
 }
 
-static bool default_404_handler(divulge_request_t* request) {
+static bool default_404_handler(divulge_request_t* request, void* context) {
     char buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
     snprintf(buffer, sizeof(buffer) - 1,
              "<body><h2>Divulge Router Error</h2><code>Resource '%s' not "
@@ -105,7 +110,8 @@ static divulge_uri_t log_uri = {
 
 static divulge_t* initialize_router(void) {
     divulge_configuration_t configuration = {
-        .socket_send_response_callback_t = socket_send_response,
+        .send = socket_send_response,
+        .close = socket_close,
     };
     divulge_t* divulge = divulge_initialize(&configuration);
     divulge_register_uri(divulge, &root_uri);
@@ -126,7 +132,6 @@ static void connection_handler(server_t* server,
     divulge_process_request(router, connection, request_buffer,
                             request_bytes_read, response_buffer,
                             sizeof(response_buffer));
-    server_close(connection);
 }
 
 int main(void) {
