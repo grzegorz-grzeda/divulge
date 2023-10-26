@@ -64,18 +64,12 @@ static bool root_handler(divulge_request_t* request, void* context) {
              counter);
     counter++;
     divulge_header_entry_t header_entries[] = {
-        {.key = "Content-Type", .value = "text/html"},
-    };
+        {.key = "Content-Type", .value = "text/html"}};
     divulge_response_t response = {
         .return_code = 200,
-        .header =
-            {
-                .count = 1,
-                .entries = header_entries,
-            },
+        .header = {.count = 1, .entries = header_entries},
         .payload = buffer,
-        .payload_size = strlen(buffer),
-    };
+        .payload_size = strlen(buffer)};
     divulge_respond(request, &response);
     return true;
 }
@@ -87,18 +81,12 @@ static bool restricted_access_handler(divulge_request_t* request,
              "<h2>Restricted access area!</h2><p>If you can see this, it means "
              "you logged in :)</p>");
     divulge_header_entry_t header_entries[] = {
-        {.key = "Content-Type", .value = "text/html"},
-    };
+        {.key = "Content-Type", .value = "text/html"}};
     divulge_response_t response = {
         .return_code = 200,
-        .header =
-            {
-                .count = 1,
-                .entries = header_entries,
-            },
+        .header = {.count = 1, .entries = header_entries},
         .payload = buffer,
-        .payload_size = strlen(buffer),
-    };
+        .payload_size = strlen(buffer)};
     divulge_respond(request, &response);
     return true;
 }
@@ -110,10 +98,7 @@ static bool default_404_handler(divulge_request_t* request, void* context) {
              "found!</code></body>",
              request->route);
     divulge_response_t response = {
-        .return_code = 404,
-        .payload = buffer,
-        .payload_size = strlen(buffer),
-    };
+        .return_code = 404, .payload = buffer, .payload_size = strlen(buffer)};
     divulge_respond(request, &response);
     return true;
 }
