@@ -45,6 +45,7 @@ typedef struct divulge_request {
     divulge_request_context_t* context;
     divulge_route_method_t method;
     const char* route;
+    const char* url_query;
     const char* header;
     const char* payload;
 } divulge_request_t;

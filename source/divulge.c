@@ -150,6 +150,20 @@ void divulge_set_default_404_handler(divulge_t* divulge,
     divulge->default_404_handler = handler;
 }
 
+static bool are_urls_equal(const char* request_url, const char* route_url) {
+    return ((strcmp(request_url, route_url) == 0) &&
+            (strlen(request_url) == strlen(route_url)));
+}
+
+static char* extract_query_from_request_url(char* request_url) {
+    char* query_separator = strchr(request_url, '?');
+    if (query_separator) {
+        *query_separator = '\0';
+        query_separator++;
+    }
+    return query_separator;
+}
+
 void divulge_process_request(divulge_t* divulge,
                              void* connection_context,
                              char* request_buffer,
@@ -176,6 +190,7 @@ void divulge_process_request(divulge_t* divulge,
     request.payload = strstr(request_buffer, "\r\n\r\n") + 4;
     char* method_name = strtok(request_buffer, " ");
     request.route = strtok(NULL, " ");
+    request.url_query = extract_query_from_request_url(request.route);
     request.method = convert_request_method_to_method_type(method_name);
     request.context = &request_context;
     D("Received request: [%s] %s", method_name, request.route);
@@ -186,8 +201,7 @@ void divulge_process_request(divulge_t* divulge,
          it = dynamic_list_next(it)) {
         route_entry_t* entry = dynamic_list_get(it);
         if ((entry->uri.method == request.method) &&
-            (strcmp(request.route, entry->uri.uri) == 0) &&
-            (strlen(request.route) == strlen(entry->uri.uri))) {
+            are_urls_equal(request.route, entry->uri.uri)) {
             bool can_execute_handler = true;
             for (dynamic_list_iterator_t* jt =
                      dynamic_list_begin(entry->middlewares);
