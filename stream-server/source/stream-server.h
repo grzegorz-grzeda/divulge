@@ -30,25 +30,19 @@ typedef struct stream_server stream_server_t;
 
 typedef struct stream_server_connection stream_server_connection_t;
 
-typedef void (*stream_server_connection_handler_t)(
-    stream_server_t* stream_server,
-    stream_server_connection_t* connection,
-    void* context);
+typedef void (*stream_server_connection_handler_t)(stream_server_t* stream_server,
+                                                   stream_server_connection_t* connection,
+                                                   void* context);
 
-stream_server_t* stream_server_create(
-    uint16_t port,
-    int max_waiting_connections,
-    size_t thread_pool_size,
-    stream_server_connection_handler_t connection_handler,
-    void* connection_handler_context);
+stream_server_t* stream_server_create(uint16_t port,
+                                      int max_waiting_connections,
+                                      size_t thread_pool_size,
+                                      stream_server_connection_handler_t connection_handler,
+                                      void* connection_handler_context);
 
-size_t stream_server_read(stream_server_connection_t* connection,
-                          char* data,
-                          size_t max_data_size);
+size_t stream_server_read(stream_server_connection_t* connection, char* data, size_t max_data_size);
 
-void stream_server_write(stream_server_connection_t* connection,
-                         const char* data,
-                         size_t data_size);
+void stream_server_write(stream_server_connection_t* connection, const char* data, size_t data_size);
 
 void stream_server_close(stream_server_connection_t* connection);
 

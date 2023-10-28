@@ -45,8 +45,7 @@ static_string_t static_string_create(const char* c_string);
 
 static_string_t static_string_tokenize(const static_string_t* sstr, char token);
 
-static_string_t static_string_snip_end(const static_string_t* sstr,
-                                       const char* tokens);
+static_string_t static_string_snip_end(const static_string_t* sstr, const char* tokens);
 
 /**
  * @}

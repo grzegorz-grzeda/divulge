@@ -78,8 +78,7 @@ static void test_tokenize(void** state) {
     assert_int_equal(query_first_pair.length, strlen(test_url) - 22);
 
     // get value of first pair
-    static_string_t query_first_pair_value =
-        static_string_tokenize(&query_first_pair, '=');
+    static_string_t query_first_pair_value = static_string_tokenize(&query_first_pair, '=');
     assert_ptr_equal(query_first_pair_value.text, test_url + 24);
     assert_int_equal(query_first_pair_value.length, strlen(test_url) - 24);
 
@@ -97,8 +96,7 @@ static void test_tokenize(void** state) {
     assert_int_equal(tokenized.length, 0);
 
     // no more '?' tokens - return an empty string
-    static_string_t no_more_question_marks =
-        static_string_tokenize(&tokenized, '?');
+    static_string_t no_more_question_marks = static_string_tokenize(&tokenized, '?');
     assert_ptr_equal(no_more_question_marks.text, NULL);
     assert_int_equal(no_more_question_marks.length, 0);
 

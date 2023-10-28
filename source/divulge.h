@@ -67,8 +67,7 @@ typedef struct divulge_response {
     size_t payload_size;
 } divulge_response_t;
 
-typedef bool (*divulge_uri_handler_t)(divulge_request_t* request,
-                                      void* context);
+typedef bool (*divulge_uri_handler_t)(divulge_request_t* request, void* context);
 
 typedef struct divulge_handler_object {
     divulge_uri_handler_t handler;
@@ -81,9 +80,7 @@ typedef struct divulge_uri {
     divulge_handler_object_t handler;
 } divulge_uri_t;
 
-typedef void (*divulge_socket_send_callback_t)(void* connection_context,
-                                               const char* data,
-                                               size_t data_size);
+typedef void (*divulge_socket_send_callback_t)(void* connection_context, const char* data, size_t data_size);
 
 typedef void (*divulge_socket_close_callback_t)(void* connection_context);
 
@@ -98,13 +95,9 @@ divulge_t* divulge_initialize(divulge_configuration_t* configuration);
 
 void divulge_register_uri(divulge_t* divulge, divulge_uri_t* uri);
 
-void divulge_add_middleware_to_uri(divulge_t* divulge,
-                                   divulge_uri_t* uri,
-                                   divulge_handler_object_t* middleware);
+void divulge_add_middleware_to_uri(divulge_t* divulge, divulge_uri_t* uri, divulge_handler_object_t* middleware);
 
-void divulge_set_default_404_handler(divulge_t* divulge,
-                                     divulge_uri_handler_t handler,
-                                     void* context);
+void divulge_set_default_404_handler(divulge_t* divulge, divulge_uri_handler_t handler, void* context);
 
 void divulge_process_request(divulge_t* divulge,
                              void* connection_context,
@@ -113,18 +106,15 @@ void divulge_process_request(divulge_t* divulge,
                              char* response_buffer,
                              size_t response_buffer_size);
 
-const char* divulge_find_request_header_key(divulge_request_t* request,
-                                            const char* key);
+const char* divulge_find_request_header_key(divulge_request_t* request, const char* key);
 
 const char* divulge_get_request_header_entry_value(const char* header_entry);
 
 bool divulge_send_status(divulge_request_t* request, int return_code);
 
-bool divulge_send_header(divulge_request_t* request,
-                         divulge_response_t* response);
+bool divulge_send_header(divulge_request_t* request, divulge_response_t* response);
 
-bool divulge_send_payload(divulge_request_t* request,
-                          divulge_response_t* response);
+bool divulge_send_payload(divulge_request_t* request, divulge_response_t* response);
 
 bool divulge_respond(divulge_request_t* request, divulge_response_t* response);
 

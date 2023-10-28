@@ -65,27 +65,24 @@ static void* thread_pool_handler(void* context) {
     stream_server_t* server = (stream_server_t*)context;
     while (true) {
         pthread_mutex_lock(&server->mutex);
-        stream_server_connection_t* connection =
-            dynamic_queue_dequeue(server->pool_queue);
+        stream_server_connection_t* connection = dynamic_queue_dequeue(server->pool_queue);
         if (!connection) {
             pthread_cond_wait(&server->condition_var, &server->mutex);
             connection = dynamic_queue_dequeue(server->pool_queue);
         }
         pthread_mutex_unlock(&server->mutex);
         if (connection) {
-            server->connection_handler(server, connection,
-                                       server->connection_handler_context);
+            server->connection_handler(server, connection, server->connection_handler_context);
             free(connection);
         }
     }
 }
 
-stream_server_t* stream_server_create(
-    uint16_t port,
-    int max_waiting_connections,
-    size_t thread_pool_size,
-    stream_server_connection_handler_t connection_handler,
-    void* connection_handler_context) {
+stream_server_t* stream_server_create(uint16_t port,
+                                      int max_waiting_connections,
+                                      size_t thread_pool_size,
+                                      stream_server_connection_handler_t connection_handler,
+                                      void* connection_handler_context) {
     stream_server_t* server = calloc(1, sizeof(stream_server_t));
     if (!server) {
         return NULL;
@@ -97,15 +94,13 @@ stream_server_t* stream_server_create(
     pthread_cond_init(&server->condition_var, NULL);
     server->thread_pool = calloc(thread_pool_size, sizeof(pthread_t));
     for (size_t i = 0; i < thread_pool_size; i++) {
-        pthread_create(server->thread_pool + i, NULL, thread_pool_handler,
-                       server);
+        pthread_create(server->thread_pool + i, NULL, thread_pool_handler, server);
     }
 
     server->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     CHECK_IF_INVALID(server->socket_fd, "Could not create a new socket");
     int true_value = 1;
-    int status = setsockopt(server->socket_fd, SOL_SOCKET, SO_REUSEADDR,
-                            &true_value, sizeof(int));
+    int status = setsockopt(server->socket_fd, SOL_SOCKET, SO_REUSEADDR, &true_value, sizeof(int));
     CHECK_IF_INVALID(status, "Could not set socket options");
 
     struct sockaddr_in serv_addr;
@@ -114,8 +109,7 @@ stream_server_t* stream_server_create(
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(port);
 
-    status = bind(server->socket_fd, (struct sockaddr*)&serv_addr,
-                  sizeof(serv_addr));
+    status = bind(server->socket_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
     CHECK_IF_INVALID(status, "Could not bind to port");
 
     status = listen(server->socket_fd, max_waiting_connections);
@@ -123,9 +117,7 @@ stream_server_t* stream_server_create(
     return server;
 }
 
-size_t stream_server_read(stream_server_connection_t* connection,
-                          char* data,
-                          size_t max_data_size) {
+size_t stream_server_read(stream_server_connection_t* connection, char* data, size_t max_data_size) {
     if (!connection || !data || (max_data_size < 1)) {
         return 0;
     }
@@ -137,9 +129,7 @@ size_t stream_server_read(stream_server_connection_t* connection,
     }
 }
 
-void stream_server_write(stream_server_connection_t* connection,
-                         const char* data,
-                         size_t data_size) {
+void stream_server_write(stream_server_connection_t* connection, const char* data, size_t data_size) {
     if (!connection || !data || (data_size < 1)) {
         return;
     }
@@ -159,8 +149,7 @@ void stream_server_loop(stream_server_t* server) {
     }
     int connection_fd = accept(server->socket_fd, (struct sockaddr*)NULL, NULL);
     CHECK_IF_INVALID(connection_fd, "Could not accept a connection");
-    stream_server_connection_t* connection =
-        calloc(1, sizeof(stream_server_connection_t));
+    stream_server_connection_t* connection = calloc(1, sizeof(stream_server_connection_t));
     connection->id = connection_fd;
     pthread_mutex_lock(&server->mutex);
     dynamic_queue_enqueue(server->pool_queue, connection);

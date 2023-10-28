@@ -26,15 +26,13 @@
 
 #include "divulge.h"
 
-typedef bool (*divulge_basic_authentication_authenticate_user_callback_t)(
-    void* context,
-    const char* username,
-    const char* password);
+typedef bool (*divulge_basic_authentication_authenticate_user_callback_t)(void* context,
+                                                                          const char* username,
+                                                                          const char* password);
 
 divulge_handler_object_t* divulge_basic_authentication_create(
     const char* realm,
-    divulge_basic_authentication_authenticate_user_callback_t
-        authentication_callback,
+    divulge_basic_authentication_authenticate_user_callback_t authentication_callback,
     void* authentication_context);
 
 #endif  // DIVULGE_BASIC_AUTHENTICATION_H

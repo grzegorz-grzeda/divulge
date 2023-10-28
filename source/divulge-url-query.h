@@ -31,7 +31,6 @@
 typedef struct divulge_url_query {
 } divulge_url_query_t;
 
-divulge_url_query_t divulge_url_query_create_from_raw_query(
-    const char* raw_query);
+divulge_url_query_t divulge_url_query_create_from_raw_query(const char* raw_query);
 
 #endif  // DIVULGE_URL_QUERY_H

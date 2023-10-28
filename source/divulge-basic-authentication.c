@@ -29,33 +29,25 @@
 
 typedef struct divulge_basic_authentication_context {
     const char* realm;
-    divulge_basic_authentication_authenticate_user_callback_t
-        authentication_callback;
+    divulge_basic_authentication_authenticate_user_callback_t authentication_callback;
     void* authentication_context;
 } divulge_basic_authentication_context_t;
 
 static bool handler(divulge_request_t* request, void* context) {
-    divulge_basic_authentication_context_t* ctx =
-        (divulge_basic_authentication_context_t*)context;
-    const char* authorization_header =
-        divulge_find_request_header_key(request, "Authorization");
+    divulge_basic_authentication_context_t* ctx = (divulge_basic_authentication_context_t*)context;
+    const char* authorization_header = divulge_find_request_header_key(request, "Authorization");
     bool result = false;
     if (!authorization_header) {
         result = false;
         return false;
     } else {
-        const char* value =
-            divulge_get_request_header_entry_value(authorization_header);
+        const char* value = divulge_get_request_header_entry_value(authorization_header);
         char* encoding = strstr(value, " ") + 1;
-        char* decoded =
-            calloc(encodings_base64_get_decode_buffer_size(encoding) + 1,
-                   sizeof(char));
+        char* decoded = calloc(encodings_base64_get_decode_buffer_size(encoding) + 1, sizeof(char));
         encodings_base64_decode(encoding, decoded);
         char* username = strtok(decoded, ":");
         char* password = strtok(NULL, ":");
-        if (!username || !password ||
-            !ctx->authentication_callback(ctx->authentication_context, username,
-                                          password)) {
+        if (!username || !password || !ctx->authentication_callback(ctx->authentication_context, username, password)) {
             result = false;
         } else {
             result = true;
@@ -85,19 +77,16 @@ static bool handler(divulge_request_t* request, void* context) {
 
 divulge_handler_object_t* divulge_basic_authentication_create(
     const char* realm,
-    divulge_basic_authentication_authenticate_user_callback_t
-        authentication_callback,
+    divulge_basic_authentication_authenticate_user_callback_t authentication_callback,
     void* authentication_context) {
     if (!realm || !authentication_callback) {
         return NULL;
     }
-    divulge_handler_object_t* object =
-        calloc(1, sizeof(divulge_handler_object_t));
+    divulge_handler_object_t* object = calloc(1, sizeof(divulge_handler_object_t));
     if (!object) {
         return NULL;
     }
-    divulge_basic_authentication_context_t* ctx =
-        calloc(1, sizeof(divulge_basic_authentication_context_t));
+    divulge_basic_authentication_context_t* ctx = calloc(1, sizeof(divulge_basic_authentication_context_t));
     if (!ctx) {
         free(object);
         return NULL;
