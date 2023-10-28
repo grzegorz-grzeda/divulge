@@ -85,8 +85,8 @@ static const char* convert_return_code_to_text(int return_code) {
 
 static bool respond_with_404(divulge_request_t* request, void* context) {
     char buffer[1024];
-    snprintf(buffer, sizeof(buffer) - 1,
-             "Divulge Routing Error: resource '%s' not found!", request->route);
+    snprintf(buffer, sizeof(buffer) - 1, "Divulge Error: [%s] '%s' failed!",
+             divulge_method_name_from_method(request->method), request->route);
     divulge_response_t response = {
         .payload = buffer,
         .payload_size = strlen(buffer),
@@ -190,7 +190,7 @@ void divulge_process_request(divulge_t* divulge,
     request.payload = strstr(request_buffer, "\r\n\r\n") + 4;
     char* method_name = strtok(request_buffer, " ");
     request.route = strtok(NULL, " ");
-    request.url_query = extract_query_from_request_url(request.route);
+    request.url_query = extract_query_from_request_url((char*)request.route);
     request.method = convert_request_method_to_method_type(method_name);
     request.context = &request_context;
     D("Received request: [%s] %s", method_name, request.route);

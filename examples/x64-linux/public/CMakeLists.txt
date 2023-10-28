@@ -20,10 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-project(divulge-example-x64-linux)
-add_executable(${PROJECT_NAME})
-target_sources(${PROJECT_NAME} PRIVATE main.c server.c)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(${PROJECT_NAME} PRIVATE divulge g2labs-log containers)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/index.html ${CMAKE_CURRENT_BINARY_DIR}/index.html COPYONLY)
 
-add_subdirectory(public)
+set(ROOT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/index.html)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/file-names.h.in ${CMAKE_CURRENT_BINARY_DIR}/file-names.h @ONLY)
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

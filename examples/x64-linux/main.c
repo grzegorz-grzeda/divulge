@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
@@ -36,6 +37,7 @@
 #define G2LABS_LOG_MODULE_NAME "divulge-x64"
 #include "divulge-basic-authentication.h"
 #include "divulge.h"
+#include "file-names.h"
 #include "g2labs-log.h"
 #include "server.h"
 
@@ -57,19 +59,46 @@ static void socket_close(void* connection_context) {
 }
 
 static bool root_handler(divulge_request_t* request, void* context) {
-    static int counter = 0;
-    char buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
-    snprintf(buffer, sizeof(buffer) - 1,
-             "<h1>Hello from Divulge router!</h1><h3>Counter: %d</h3>",
-             counter);
-    counter++;
+    char* file_buffer = NULL;
     divulge_header_entry_t header_entries[] = {
         {.key = "Content-Type", .value = "text/html"}};
     divulge_response_t response = {
         .return_code = 200,
         .header = {.count = 1, .entries = header_entries},
-        .payload = buffer,
-        .payload_size = strlen(buffer)};
+        .payload = "",
+        .payload_size = 0};
+    struct stat st;
+    const char* file_name = ROOT_FILE_NAME;
+    int result = stat(file_name, &st);
+    if (result != 0) {
+        response.return_code = 500;
+        response.payload = "Error while accessing file",
+        response.payload_size = 26;
+    } else {
+        size_t file_size = st.st_size;
+        file_buffer = calloc(file_size, sizeof(char));
+        FILE* f = fopen(file_name, "r");
+        size_t bytes_read = fread(file_buffer, file_size, 1, f);
+        fclose(f);
+        response.payload = file_buffer;
+        response.payload_size = bytes_read;
+    }
+    divulge_respond(request, &response);
+    if (file_buffer) {
+        free(file_buffer);
+    }
+    return true;
+}
+
+static bool root_post_handler(divulge_request_t* request, void* context) {
+    I("Received POST /: '%s'", request->payload);
+    divulge_header_entry_t header_entries[] = {
+        {.key = "Location", .value = "/"}};
+    divulge_response_t response = {
+        .return_code = 301,
+        .header = {.count = 1, .entries = header_entries},
+        .payload = "",
+        .payload_size = 0};
     divulge_respond(request, &response);
     return true;
 }
@@ -91,22 +120,16 @@ static bool restricted_access_handler(divulge_request_t* request,
     return true;
 }
 
-static bool default_404_handler(divulge_request_t* request, void* context) {
-    char buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
-    snprintf(buffer, sizeof(buffer) - 1,
-             "<body><h2>Divulge Router Error</h2><code>Resource '%s' not "
-             "found!</code></body>",
-             request->route);
-    divulge_response_t response = {
-        .return_code = 404, .payload = buffer, .payload_size = strlen(buffer)};
-    divulge_respond(request, &response);
-    return true;
-}
-
 static divulge_uri_t root_uri = {
     .uri = "/",
     .handler = {.handler = root_handler},
     .method = DIVULGE_ROUTE_METHOD_GET,
+};
+
+static divulge_uri_t root_post_uri = {
+    .uri = "/",
+    .handler = {.handler = root_post_handler},
+    .method = DIVULGE_ROUTE_METHOD_POST,
 };
 
 static divulge_uri_t restricted_uri = {
@@ -141,11 +164,12 @@ static divulge_t* initialize_router(void) {
     divulge_t* divulge = divulge_initialize(&configuration);
     divulge_register_uri(divulge, &root_uri);
     divulge_add_middleware_to_uri(divulge, &root_uri, &logger_middleware);
+    divulge_register_uri(divulge, &root_post_uri);
+    divulge_add_middleware_to_uri(divulge, &root_post_uri, &logger_middleware);
     divulge_register_uri(divulge, &restricted_uri);
     divulge_add_middleware_to_uri(divulge, &restricted_uri,
                                   divulge_basic_authentication_create(
                                       "G2Labs realm", authenticate_user, NULL));
-    divulge_set_default_404_handler(divulge, default_404_handler, NULL);
     return divulge;
 }
 
