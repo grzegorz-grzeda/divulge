@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#include "server.h"
+#include "stream-server.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
@@ -35,7 +35,7 @@
 #include <time.h>
 #include <unistd.h>
 #define G2LABS_LOG_MODULE_LEVEL G2LABS_LOG_MODULE_LEVEL_INFO
-#define G2LABS_LOG_MODULE_NAME "divulge-server"
+#define G2LABS_LOG_MODULE_NAME "stream-server"
 #include "dynamic-queue.h"
 #include "g2labs-log.h"
 
@@ -47,25 +47,25 @@
         }                        \
     } while (0)
 
-typedef struct server {
+typedef struct stream_server {
     pthread_t* thread_pool;
     pthread_mutex_t mutex;         // = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t condition_var;  // = PTHREAD_COND_INITIALIZER;
     dynamic_queue_t* pool_queue;
-    server_connection_handler_t connection_handler;
+    stream_server_connection_handler_t connection_handler;
     void* connection_handler_context;
     int socket_fd;
-} server_t;
+} stream_server_t;
 
-typedef struct server_connection {
+typedef struct stream_server_connection {
     int id;
-} server_connection_t;
+} stream_server_connection_t;
 
 static void* thread_pool_handler(void* context) {
-    server_t* server = (server_t*)context;
+    stream_server_t* server = (stream_server_t*)context;
     while (true) {
         pthread_mutex_lock(&server->mutex);
-        server_connection_t* connection =
+        stream_server_connection_t* connection =
             dynamic_queue_dequeue(server->pool_queue);
         if (!connection) {
             pthread_cond_wait(&server->condition_var, &server->mutex);
@@ -80,12 +80,13 @@ static void* thread_pool_handler(void* context) {
     }
 }
 
-server_t* server_create(uint16_t port,
-                        int max_waiting_connections,
-                        size_t thread_pool_size,
-                        server_connection_handler_t connection_handler,
-                        void* connection_handler_context) {
-    server_t* server = calloc(1, sizeof(server_t));
+stream_server_t* stream_server_create(
+    uint16_t port,
+    int max_waiting_connections,
+    size_t thread_pool_size,
+    stream_server_connection_handler_t connection_handler,
+    void* connection_handler_context) {
+    stream_server_t* server = calloc(1, sizeof(stream_server_t));
     if (!server) {
         return NULL;
     }
@@ -122,9 +123,9 @@ server_t* server_create(uint16_t port,
     return server;
 }
 
-size_t server_read(server_connection_t* connection,
-                   char* data,
-                   size_t max_data_size) {
+size_t stream_server_read(stream_server_connection_t* connection,
+                          char* data,
+                          size_t max_data_size) {
     if (!connection || !data || (max_data_size < 1)) {
         return 0;
     }
@@ -136,29 +137,30 @@ size_t server_read(server_connection_t* connection,
     }
 }
 
-void server_write(server_connection_t* connection,
-                  const char* data,
-                  size_t data_size) {
+void stream_server_write(stream_server_connection_t* connection,
+                         const char* data,
+                         size_t data_size) {
     if (!connection || !data || (data_size < 1)) {
         return;
     }
     write(connection->id, data, data_size);
 }
 
-void server_close(server_connection_t* connection) {
+void stream_server_close(stream_server_connection_t* connection) {
     if (!connection) {
         return;
     }
     close(connection->id);
 }
 
-void server_loop(server_t* server) {
+void stream_server_loop(stream_server_t* server) {
     if (!server) {
         return;
     }
     int connection_fd = accept(server->socket_fd, (struct sockaddr*)NULL, NULL);
     CHECK_IF_INVALID(connection_fd, "Could not accept a connection");
-    server_connection_t* connection = calloc(1, sizeof(server_connection_t));
+    stream_server_connection_t* connection =
+        calloc(1, sizeof(stream_server_connection_t));
     connection->id = connection_fd;
     pthread_mutex_lock(&server->mutex);
     dynamic_queue_enqueue(server->pool_queue, connection);

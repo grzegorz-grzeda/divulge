@@ -39,8 +39,8 @@
 #include "divulge.h"
 #include "file-names.h"
 #include "g2labs-log.h"
-#include "server.h"
 #include "static-string.h"
+#include "stream-server.h"
 
 #define DIVULGE_EXAMPLE_PORT (5000)
 #define DIVULGE_EXAMPLE_MAX_WAITING_CONNECTIONS (100)
@@ -50,13 +50,15 @@
 static void socket_send_response(void* connection_context,
                                  const char* data,
                                  size_t data_size) {
-    server_connection_t* connection = (server_connection_t*)connection_context;
-    server_write(connection, data, data_size);
+    stream_server_connection_t* connection =
+        (stream_server_connection_t*)connection_context;
+    stream_server_write(connection, data, data_size);
 }
 
 static void socket_close(void* connection_context) {
-    server_connection_t* connection = (server_connection_t*)connection_context;
-    server_close(connection);
+    stream_server_connection_t* connection =
+        (stream_server_connection_t*)connection_context;
+    stream_server_close(connection);
 }
 
 static bool root_handler(divulge_request_t* request, void* context) {
@@ -165,14 +167,14 @@ static divulge_t* initialize_router(void) {
     return divulge;
 }
 
-static void connection_handler(server_t* server,
-                               server_connection_t* connection,
+static void connection_handler(stream_server_t* server,
+                               stream_server_connection_t* connection,
                                void* context) {
     divulge_t* router = (divulge_t*)context;
     char request_buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
     char response_buffer[DIVULGE_EXAMPLE_BUFFER_SIZE];
-    size_t request_bytes_read =
-        server_read(connection, request_buffer, sizeof(request_buffer) - 1);
+    size_t request_bytes_read = stream_server_read(connection, request_buffer,
+                                                   sizeof(request_buffer) - 1);
     request_buffer[request_bytes_read] = '\0';
     divulge_process_request(router, connection, request_buffer,
                             request_bytes_read, response_buffer,
@@ -184,11 +186,11 @@ int main(void) {
 
     divulge_t* router = initialize_router();
 
-    server_t* server = server_create(
+    stream_server_t* server = stream_server_create(
         DIVULGE_EXAMPLE_PORT, DIVULGE_EXAMPLE_MAX_WAITING_CONNECTIONS,
         DIVULGE_EXAMPLE_THREAD_POOL_SIZE, connection_handler, router);
     while (true) {
-        server_loop(server);
+        stream_server_loop(server);
     }
     return 0;
 }

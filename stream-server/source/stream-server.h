@@ -21,35 +21,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef SERVER_H
-#define SERVER_H
+#ifndef STREAM_SERVER_H
+#define STREAM_SERVER_H
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct server server_t;
+typedef struct stream_server stream_server_t;
 
-typedef struct server_connection server_connection_t;
+typedef struct stream_server_connection stream_server_connection_t;
 
-typedef void (*server_connection_handler_t)(server_t* server,
-                                            server_connection_t* connection,
-                                            void* context);
+typedef void (*stream_server_connection_handler_t)(
+    stream_server_t* stream_server,
+    stream_server_connection_t* connection,
+    void* context);
 
-server_t* server_create(uint16_t port,
-                        int max_waiting_connections,
-                        size_t thread_pool_size,
-                        server_connection_handler_t connection_handler,
-                        void* connection_handler_context);
+stream_server_t* stream_server_create(
+    uint16_t port,
+    int max_waiting_connections,
+    size_t thread_pool_size,
+    stream_server_connection_handler_t connection_handler,
+    void* connection_handler_context);
 
-size_t server_read(server_connection_t* connection,
-                   char* data,
-                   size_t max_data_size);
+size_t stream_server_read(stream_server_connection_t* connection,
+                          char* data,
+                          size_t max_data_size);
 
-void server_write(server_connection_t* connection,
-                  const char* data,
-                  size_t data_size);
+void stream_server_write(stream_server_connection_t* connection,
+                         const char* data,
+                         size_t data_size);
 
-void server_close(server_connection_t* connection);
+void stream_server_close(stream_server_connection_t* connection);
 
-void server_loop(server_t* server);
+void stream_server_loop(stream_server_t* server);
 
-#endif  // SERVER_H
+#endif  // STREAM_SERVER_H

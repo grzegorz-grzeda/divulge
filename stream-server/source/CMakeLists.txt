@@ -20,10 +20,5 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-project(divulge-example-x64-linux)
-add_executable(${PROJECT_NAME})
-target_sources(${PROJECT_NAME} PRIVATE main.c)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(${PROJECT_NAME} PRIVATE divulge g2labs-log containers stream-server)
-
-add_subdirectory(public)
+target_sources(${PROJECT_NAME} PRIVATE stream-server.c)
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

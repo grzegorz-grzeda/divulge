@@ -36,5 +36,6 @@ endif()
 add_subdirectory(source)
 add_subdirectory(tests)
 add_subdirectory(examples)
+add_subdirectory(stream-server)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE containers g2labs-log encodings)

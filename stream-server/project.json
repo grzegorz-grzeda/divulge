@@ -1,0 +1,7 @@
+{
+    "name": "stream-server",
+    "libraries": [
+        "containers",
+        "g2labs-log"
+    ]
+}
