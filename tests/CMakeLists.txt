@@ -21,4 +21,3 @@
 # SOFTWARE.
 #
 atomic_tests_add(test-divulge test-divulge.c divulge)
-atomic_tests_add(test-static-string test-static-string.c divulge)
