@@ -15,7 +15,8 @@
                 "short": "Linux (x64)",
                 "settings": {
                     "DIVULGE_EXAMPLES_X64_LINUX": "1",
-                    "G2LABS_PLATFORM_TARGET": "x64"
+                    "G2LABS_PLATFORM_TARGET": "x64",
+                    "G2LABS_PLATFORM_TARGET_FLAVOR": "linux"
                 }
             }
         }

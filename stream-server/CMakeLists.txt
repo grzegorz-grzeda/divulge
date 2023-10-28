@@ -26,5 +26,11 @@ enable_testing()
 project(stream-server)
 add_library(${PROJECT_NAME})
 
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    add_subdirectory(lib/containers)
+    add_subdirectory(lib/g2labs-log)
+endif()
+
 add_subdirectory(source)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE g2labs-log containers)

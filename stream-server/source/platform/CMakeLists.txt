@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_subdirectory(platform)
+if((DEFINED G2LABS_PLATFORM_TARGET) AND(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${G2LABS_PLATFORM_TARGET}))
+    add_subdirectory(${G2LABS_PLATFORM_TARGET})
+else()
+    add_subdirectory(default)
+endif()
