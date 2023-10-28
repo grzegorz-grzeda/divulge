@@ -76,8 +76,12 @@ static divulge_route_method_t convert_request_method_to_method_type(
 static const char* convert_return_code_to_text(int return_code) {
     if (return_code == 200) {
         return "OK";
+    } else if (return_code == 301) {
+        return "Moved Permanently";
     } else if (return_code == 404) {
         return "Not found";
+    } else if (return_code == 500) {
+        return "Internal server error";
     } else {
         return "Other";
     }
@@ -240,9 +244,9 @@ const char* divulge_get_request_header_entry_value(const char* header_entry) {
     return value;
 }
 
-void divulge_send_status(divulge_request_t* request, int return_code) {
+bool divulge_send_status(divulge_request_t* request, int return_code) {
     if (!request || request->context->was_status_sent) {
-        return;
+        return false;
     }
     size_t size =
         (size_t)sprintf(request->context->response_buffer, "HTTP/1.1 %d %s\r\n",
@@ -251,6 +255,7 @@ void divulge_send_status(divulge_request_t* request, int return_code) {
         request->context->connection_context, request->context->response_buffer,
         size);
     request->context->was_status_sent = true;
+    return true;
 }
 
 static void send_header_entry(divulge_request_t* request,
@@ -266,10 +271,10 @@ static void send_header_entry(divulge_request_t* request,
         size);
 }
 
-void divulge_send_header(divulge_request_t* request,
+bool divulge_send_header(divulge_request_t* request,
                          divulge_response_t* response) {
     if (!request || !response || request->context->was_header_sent) {
-        return;
+        return false;
     }
     if (!request->context->was_status_sent) {
         divulge_send_status(request, response->return_code);
@@ -282,12 +287,13 @@ void divulge_send_header(divulge_request_t* request,
         }
     }
     request->context->was_header_sent = true;
+    return true;
 }
 
-void divulge_send_payload(divulge_request_t* request,
+bool divulge_send_payload(divulge_request_t* request,
                           divulge_response_t* response) {
     if (!request || !response) {
-        return;
+        return false;
     }
     if (!request->context->was_header_sent) {
         divulge_send_header(request, response);
@@ -300,13 +306,30 @@ void divulge_send_payload(divulge_request_t* request,
     request->context->divulge->configuration.send(
         request->context->connection_context, request->context->response_buffer,
         response_size);
+    return true;
 }
 
-void divulge_respond(divulge_request_t* request, divulge_response_t* response) {
+bool divulge_respond(divulge_request_t* request, divulge_response_t* response) {
     if (!request || !response) {
-        return;
+        return false;
     }
     divulge_send_status(request, response->return_code);
     divulge_send_header(request, response);
     divulge_send_payload(request, response);
+    return true;
+}
+
+bool divulge_redirect(divulge_request_t* request, const char* new_location) {
+    if (!request || !new_location) {
+        return false;
+    }
+    divulge_header_entry_t header_entries[] = {
+        {.key = "Location", .value = new_location}};
+    divulge_response_t response = {
+        .return_code = 301,
+        .header = {.count = 1, .entries = header_entries},
+        .payload = "",
+        .payload_size = 0};
+    divulge_respond(request, &response);
+    return true;
 }

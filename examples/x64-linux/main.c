@@ -40,6 +40,7 @@
 #include "file-names.h"
 #include "g2labs-log.h"
 #include "server.h"
+#include "static-string.h"
 
 #define DIVULGE_EXAMPLE_PORT (5000)
 #define DIVULGE_EXAMPLE_MAX_WAITING_CONNECTIONS (100)
@@ -73,7 +74,7 @@ static bool root_handler(divulge_request_t* request, void* context) {
     if (result != 0) {
         response.return_code = 500;
         response.payload = "Error while accessing file",
-        response.payload_size = 26;
+        response.payload_size = strlen(response.payload);
     } else {
         size_t file_size = st.st_size;
         file_buffer = calloc(file_size, sizeof(char));
@@ -83,24 +84,16 @@ static bool root_handler(divulge_request_t* request, void* context) {
         response.payload = file_buffer;
         response.payload_size = bytes_read;
     }
-    divulge_respond(request, &response);
+    bool status = divulge_respond(request, &response);
     if (file_buffer) {
         free(file_buffer);
     }
-    return true;
+    return status;
 }
 
 static bool root_post_handler(divulge_request_t* request, void* context) {
     I("Received POST /: '%s'", request->payload);
-    divulge_header_entry_t header_entries[] = {
-        {.key = "Location", .value = "/"}};
-    divulge_response_t response = {
-        .return_code = 301,
-        .header = {.count = 1, .entries = header_entries},
-        .payload = "",
-        .payload_size = 0};
-    divulge_respond(request, &response);
-    return true;
+    return divulge_redirect(request, "/");
 }
 
 static bool restricted_access_handler(divulge_request_t* request,
@@ -116,8 +109,7 @@ static bool restricted_access_handler(divulge_request_t* request,
         .header = {.count = 1, .entries = header_entries},
         .payload = buffer,
         .payload_size = strlen(buffer)};
-    divulge_respond(request, &response);
-    return true;
+    return divulge_respond(request, &response);
 }
 
 static divulge_uri_t root_uri = {

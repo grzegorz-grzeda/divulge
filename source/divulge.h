@@ -118,15 +118,17 @@ const char* divulge_find_request_header_key(divulge_request_t* request,
 
 const char* divulge_get_request_header_entry_value(const char* header_entry);
 
-void divulge_send_status(divulge_request_t* request, int return_code);
+bool divulge_send_status(divulge_request_t* request, int return_code);
 
-void divulge_send_header(divulge_request_t* request,
+bool divulge_send_header(divulge_request_t* request,
                          divulge_response_t* response);
 
-void divulge_send_payload(divulge_request_t* request,
+bool divulge_send_payload(divulge_request_t* request,
                           divulge_response_t* response);
 
-void divulge_respond(divulge_request_t* request, divulge_response_t* response);
+bool divulge_respond(divulge_request_t* request, divulge_response_t* response);
+
+bool divulge_redirect(divulge_request_t* request, const char* new_location);
 /**
  * @}
  */
