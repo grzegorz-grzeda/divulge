@@ -31,11 +31,11 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     add_subdirectory(lib/containers)
     add_subdirectory(lib/g2labs-log)
     add_subdirectory(lib/encodings)
+    add_subdirectory(lib/stream-server)
 endif()
 
 add_subdirectory(source)
 add_subdirectory(tests)
 add_subdirectory(examples)
-add_subdirectory(stream-server)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE containers g2labs-log encodings)

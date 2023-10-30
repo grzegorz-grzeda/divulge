@@ -4,6 +4,7 @@
         "containers",
         "atomic-tests",
         "g2labs-log",
-        "encodings"
+        "encodings",
+        "stream-server"
     ]
 }
