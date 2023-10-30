@@ -40,6 +40,12 @@ jobs:
         repository: grzegorz-grzeda/encodings
         path: ./lib/encodings
 
+    - name: Checkout the `stream-server` package
+      uses: actions/checkout@v3
+      with:
+        repository: grzegorz-grzeda/stream-server
+        path: ./lib/stream-server
+
     - name: Checkout the `audit` package
       uses: actions/checkout@v3
       with:
