@@ -32,6 +32,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     add_subdirectory(lib/g2labs-log)
     add_subdirectory(lib/encodings)
     add_subdirectory(lib/stream-server)
+    add_subdirectory(lib/audit)
 endif()
 
 add_subdirectory(source)
