@@ -39,7 +39,6 @@ static bool handler(divulge_request_t* request, void* context) {
     bool result = false;
     if (!authorization_header) {
         result = false;
-        return false;
     } else {
         const char* value = divulge_get_request_header_entry_value(authorization_header);
         char* encoding = strstr(value, " ") + 1;
